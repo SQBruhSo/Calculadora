@@ -3,40 +3,235 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Calculadora Minimalista</title>
-    <link rel="stylesheet" href="styles.css">
+    <title>Tres en Raya</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+
+        h1 {
+            margin-bottom: 10px;
+            font-size: 2.5rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .status {
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+            font-weight: bold;
+            min-height: 28px;
+        }
+
+        .scoreboard {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px 20px;
+            border-radius: 8px;
+            backdrop-filter: blur(5px);
+        }
+
+        .board {
+            display: grid;
+            grid-template-columns: repeat(3, 100px);
+            grid-template-rows: repeat(3, 100px);
+            gap: 10px;
+            background-color: rgba(255, 255, 255, 0.2);
+            padding: 10px;
+            border-radius: 10px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        .cell {
+            background-color: #ffffff;
+            border: none;
+            border-radius: 5px;
+            font-size: 2.5rem;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .cell:hover {
+            background-color: #f0f0f0;
+            transform: scale(1.02);
+        }
+
+        .cell.x {
+            color: #ff4757;
+        }
+
+        .cell.o {
+            color: #2ed573;
+        }
+
+        .btn-reset {
+            margin-top: 25px;
+            padding: 10px 20px;
+            font-size: 1rem;
+            font-weight: bold;
+            background-color: #ffa502;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: background 0.2s;
+        }
+
+        .btn-reset:hover {
+            background-color: #ff7f50;
+        }
+    </style>
 </head>
 <body>
 
-    <div class="calculator">
-        <div class="display" id="display">0</div>
-        
-        <div class="buttons">
-            <button class="btn operator" onclick="clearDisplay()">C</button>
-            <button class="btn operator" onclick="appendOperator('/')">/</button>
-            <button class="btn operator" onclick="appendOperator('*')">*</button>
-            <button class="btn operator" onclick="deleteLast()">⌫</button>
+    <h1>Tres en Raya</h1>
 
-            <button class="btn" onclick="appendNumber('7')">7</button>
-            <button class="btn" onclick="appendNumber('8')">8</button>
-            <button class="btn" onclick="appendNumber('9')">9</button>
-            <button class="btn operator" onclick="appendOperator('-')">-</button>
-
-            <button class="btn" onclick="appendNumber('4')">4</button>
-            <button class="btn" onclick="appendNumber('5')">5</button>
-            <button class="btn" onclick="appendNumber('6')">6</button>
-            <button class="btn operator" onclick="appendOperator('+')">+</button>
-
-            <button class="btn" onclick="appendNumber('1')">1</button>
-            <button class="btn" onclick="appendNumber('2')">2</button>
-            <button class="btn" onclick="appendNumber('3')">3</button>
-            <button class="btn equal" onclick="calculate()">=</button>
-
-            <button class="btn zero" onclick="appendNumber('0')">0</button>
-            <button class="btn" onclick="appendNumber('.')">.</button>
-        </div>
+    <div class="scoreboard">
+        <div>X: <span id="scoreX">0</span></div>
+        <div>O: <span id="scoreO">0</span></div>
     </div>
 
-    <script src="app.js"></script>
+    <div class="status" id="statusText">Turno de X</div>
+
+    <div class="board" id="board">
+        <button class="cell" data-index="0"></button>
+        <button class="cell" data-index="1"></button>
+        <button class="cell" data-index="2"></button>
+        <button class="cell" data-index="3"></button>
+        <button class="cell" data-index="4"></button>
+        <button class="cell" data-index="5"></button>
+        <button class="cell" data-index="6"></button>
+        <button class="cell" data-index="7"></button>
+        <button class="cell" data-index="8"></button>
+    </div>
+
+    <button class="btn-reset" id="resetBtn">Reiniciar Partida</button>
+
+    <script>
+        const board = document.getElementById('board');
+        const cells = document.querySelectorAll('.cell');
+        const statusText = document.getElementById('statusText');
+        const resetBtn = document.getElementById('resetBtn');
+        const scoreXText = document.getElementById('scoreX');
+        const scoreOText = document.getElementById('scoreO');
+
+        let currentPlayer = 'X';
+        let gameState = ["", "", "", "", "", "", "", "", ""];
+        let isGameActive = true;
+        let scoreX = 0;
+        let scoreO = 0;
+
+        const winningConditions = [
+            [0, 1, 2], // Filas
+            [3, 4, 5],
+            [6, 7, 8],
+            [0, 3, 6], // Columnas
+            [1, 4, 7],
+            [2, 5, 8],
+            [0, 4, 8], // Diagonales
+            [2, 4, 6]
+        ];
+
+        function handleCellClick(e) {
+            const clickedCell = e.target;
+            const clickedCellIndex = parseInt(clickedCell.getAttribute('data-index'));
+
+            if (gameState[clickedCellIndex] !== "" || !isGameActive) {
+                return;
+            }
+
+            updateCell(clickedCell, clickedCellIndex);
+            checkForWinner();
+        }
+
+        function updateCell(cell, index) {
+            gameState[index] = currentPlayer;
+            cell.textContent = currentPlayer;
+            cell.classList.add(currentPlayer.toLowerCase());
+        }
+
+        function changePlayer() {
+            currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+            statusText.textContent = `Turno de ${currentPlayer}`;
+        }
+
+        function checkForWinner() {
+            let roundWon = false;
+
+            for (let i = 0; i < winningConditions.length; i++) {
+                const winCondition = winningConditions[i];
+                let a = gameState[winCondition[0]];
+                let b = gameState[winCondition[1]];
+                let c = gameState[winCondition[2]];
+
+                if (a === '' || b === '' || c === '') {
+                    continue;
+                }
+                if (a === b && b === c) {
+                    roundWon = true;
+                    break;
+                }
+            }
+
+            if (roundWon) {
+                statusText.textContent = `¡El jugador ${currentPlayer} ha ganado! 🎉`;
+                isGameActive = false;
+                updateScore();
+                return;
+            }
+
+            let roundDraw = !gameState.includes("");
+            if (roundDraw) {
+                statusText.textContent = "¡Empate! 🤝";
+                isGameActive = false;
+                return;
+            }
+
+            changePlayer();
+        }
+
+        function updateScore() {
+            if (currentPlayer === 'X') {
+                scoreX++;
+                scoreXText.textContent = scoreX;
+            } else {
+                scoreO++;
+                scoreOText.textContent = scoreO;
+            }
+        }
+
+        function resetGame() {
+            currentPlayer = 'X';
+            gameState = ["", "", "", "", "", "", "", "", ""];
+            isGameActive = true;
+            statusText.textContent = `Turno de ${currentPlayer}`;
+            cells.forEach(cell => {
+                cell.textContent = "";
+                cell.classList.remove('x', 'o');
+            });
+        }
+
+        cells.forEach(cell => cell.addEventListener('click', handleCellClick));
+        resetBtn.addEventListener('click', resetGame);
+    </script>
 </body>
 </html>
